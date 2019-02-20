@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import os
+from os.path import abspath
 import click
 
 from tocrify import Mets
@@ -23,7 +24,9 @@ def cli(mets,out_dir,order_file):
 
     #
     # iterate over all elements of the logical struct map
+    hocr_files = {}
     for logical in mets.get_logicals():
+        #  print(logical)
         physical = mets.get_first_physical_for_logical(logical)
         if physical is not None:
             hocr = Hocr.read("%s/%s" % (mwd, mets.get_hocr_for_physical(physical).file_name))
@@ -31,18 +34,24 @@ def cli(mets,out_dir,order_file):
                 ingested = hocr.ingest_structure(logical)
             else:
                 click.echo(mets.get_hocr_for_physical(physical).file_name, err=True)
+            hocr_files[hocr.path] = hocr
+            print("1st %s" % hocr.path)
 
-    #
     # fill the order file and print updated hOCR files
     for order in sorted(mets.file_order.keys()):
         file_hocr = mets.get_hocr_for_physical(mets.get_physical(mets.file_order[order]))
-        hocr = Hocr.read("%s/%s" % (mwd, file_hocr.file_name))
-        out_filename = "%s/%s" % (out_dir, os.path.basename(file_hocr.file_name))
-        if order_file:
-            order_file.write("%s\n" % out_filename)
-        out_file = open(out_filename, "wb")
-        hocr.write(out_file)
-        print(out_filename)
+        try:
+            print("2nd %s" % abspath("%s/%s" % (mwd, file_hocr.file_name)))
+            hocr = hocr_files[abspath("%s/%s" % (mwd, file_hocr.file_name))]
+            #  hocr = Hocr.read("%s/%s" % (mwd, file_hocr.file_name))
+            out_filename = "%s/%s" % (out_dir, os.path.basename(file_hocr.file_name))
+            if order_file:
+                order_file.write("%s\n" % out_filename)
+            out_file = open(out_filename, "wb")
+            hocr.write(out_file)
+            #  print(out_filename)
+        except:
+            pass
             
 
 if __name__ == '__main__':
